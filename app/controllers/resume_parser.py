@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile, Form, Depends
 from fastapi.responses import JSONResponse
 from datetime import datetime, date
 import tempfile
@@ -7,7 +7,9 @@ import spacy
 import re
 from docx import Document
 import openpyxl
-from app.config.database import SessionLocal
+from sqlalchemy.orm import Session
+from app.config.database import SessionLocal, get_db
+from app.config.auth import get_current_user
 from app.models.interview_candidate_details import InterviewCandidateDetails, CandidatePassword
 from app.utils import generate_random_meeting_id, generate_random_password, clean_utf8
 from passlib.context import CryptContext
@@ -105,7 +107,9 @@ def parse_resume(profile_name: str = Form(...),
                 job_description: str = Form(...),
                 resume_text: str = Form(...),
                 required_skills: str = Form(...),
-                file: UploadFile = File(...)):
+                file: UploadFile = File(...),
+                current_user: InterviewCandidateDetails = Depends(get_current_user),
+                db: Session = Depends(get_db)):
     try:
         # Use synchronous read
         with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as tmp:

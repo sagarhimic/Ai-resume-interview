@@ -3,7 +3,7 @@ from app.controllers.GenerateQuestions import generate_questions
 
 router = APIRouter()
 
-@router.post("/generate_questions/")
+@router.post("/generate-questions/")
 
 def generate_ai_questions(job_title: str = Form(...),
                         job_description: str = Form(...),

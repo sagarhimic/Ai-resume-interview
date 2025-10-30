@@ -3,7 +3,7 @@ from app.controllers.GenerateQuestions import submit_answer
 
 router = APIRouter()
 
-@router.post("/submit_answer/")
+@router.post("/submit-answer/")
 def submit_candidate_answers(candidate_id: int = Form(...),
                             question_id: int = Form(...),
                             answer_text: str = Form(...),

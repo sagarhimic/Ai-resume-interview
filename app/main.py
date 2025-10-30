@@ -41,6 +41,17 @@ def custom_openapi():
         "BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
     }
 
+    # 🔐 Only protect specific routes like /chat-store/
+    secure_paths = ["/parse-resume/", "/submit-answer/", "/generate-questions/"]
+
+    for path in openapi_schema["paths"]:
+        if path in secure_paths:
+            for method in openapi_schema["paths"][path]:
+                openapi_schema["paths"][path][method]["security"] = [{"BearerAuth": []}]
+        else:
+            for method in openapi_schema["paths"][path]:
+                openapi_schema["paths"][path][method].pop("security", None)
+
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
