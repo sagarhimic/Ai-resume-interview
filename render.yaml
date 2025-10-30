@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: ai-resume-interview
+    env: python
+    pythonVersion: 3.10.14
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
