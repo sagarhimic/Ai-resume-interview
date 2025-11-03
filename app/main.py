@@ -42,7 +42,7 @@ def custom_openapi():
     }
 
     # 🔐 Only protect specific routes like /chat-store/
-    secure_paths = ["/parse-resume/", "/submit-answer/", "/generate-questions/"]
+    secure_paths = ["/parse-resume/", "/submit-answer/", "/generate-questions/", "/upload-full-video/", "/upload-question-audio/"]
 
     for path in openapi_schema["paths"]:
         if path in secure_paths:
@@ -65,3 +65,4 @@ app.include_router(login_routes.router)
 app.include_router(interview_routes.router)
 app.include_router(profile_routes.router)
 app.include_router(analyze_routes.router)
+app.include_router(record_routes.router)

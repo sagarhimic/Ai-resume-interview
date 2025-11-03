@@ -1,10 +1,13 @@
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, Depends
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Float, JSON, ForeignKey, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
+from app.models.interview_candidate_details import InterviewCandidateDetails
 from app.models.Candidate_Answer import CandidateAnswer
 from app.models.Interview_Question import InterviewQuestion
+from app.config.auth import get_current_user
+from app.config.database import get_db
 from app.config.database import SessionLocal
 import datetime
 from google import genai
@@ -34,9 +37,9 @@ def generate_questions(
     duration: int = Form(...),
     experience: int = Form(...),
     required_skills: str = Form(...),        # "Python, Flask, SQL"
-    candidate_skills: str = Form(...),       # "Python, HTML, CSS"
-):
-    db = SessionLocal()
+    candidate_skills: str = Form(...),
+    current_user: InterviewCandidateDetails = Depends(get_current_user),
+    db: Session = Depends(get_db)):
 
     prompt = f"""
     You are an expert technical interviewer.
@@ -83,6 +86,8 @@ def submit_answer(
     experience: str = Form(...),
     job_description: str = Form(...),
     required_skills: str = Form(...),
+    current_user: InterviewCandidateDetails = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     db = SessionLocal()
     try:
