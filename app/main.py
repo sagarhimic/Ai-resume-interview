@@ -8,7 +8,9 @@ from .routes import (
     interview_routes,
     answer_routes,
     profile_routes,
-    analyze_routes
+    analyze_routes,
+    record_routes,
+    candidate_que_ans_routes
 )
 
 app = FastAPI(title="AI Interview Analysis API")
@@ -42,7 +44,7 @@ def custom_openapi():
     }
 
     # 🔐 Only protect specific routes like /chat-store/
-    secure_paths = ["/parse-resume/", "/submit-answer/", "/generate-questions/", "/upload-full-video/", "/upload-question-audio/"]
+    secure_paths = ["/parse-resume/", "/submit-answer/", "/generate-questions/", "/upload-full-video/", "/upload-question-audio/","/get-candidate-answers/"]
 
     for path in openapi_schema["paths"]:
         if path in secure_paths:
@@ -66,3 +68,4 @@ app.include_router(interview_routes.router)
 app.include_router(profile_routes.router)
 app.include_router(analyze_routes.router)
 app.include_router(record_routes.router)
+app.include_router(candidate_que_ans_routes.router)

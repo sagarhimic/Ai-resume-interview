@@ -8,6 +8,7 @@ import re
 
 
 def get_candidate_info(candidate_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
+
     candidate = db.query(InterviewCandidateDetails).filter(InterviewCandidateDetails.id == candidate_id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")

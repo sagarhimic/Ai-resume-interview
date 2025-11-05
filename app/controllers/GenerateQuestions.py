@@ -42,16 +42,43 @@ def generate_questions(
     db: Session = Depends(get_db)):
 
     prompt = f"""
-    You are an expert technical interviewer.
-    Generate {duration} minutes {job_title} interview questions for a candidate with {experience} years experience.
+    You are an experienced and friendly technical interviewer conducting a real human-like interview.
 
-    Job Description: {job_description}
-    Required Skills: {required_skills}
-    Candidate Skills: {candidate_skills}
+    Interview Context:
+    - Job Title: {job_title}
+    - Job Description: {job_description}
+    - Duration: {duration} minutes
+    - Candidate Experience: {experience} years
+    - Required Skills: {required_skills}
+    - Candidate Skills: {candidate_skills}
 
-    - Include technical, OOP, database, and framework questions.
-    - Make them slightly challenging based on candidate's skills.
-    - Output only questions separated by new lines.
+    Interview Goal:
+    Conduct a conversational-style interview where you start with a self-introduction
+    and build rapport, then gradually move from personal/human questions to
+    behavioral, situational, and finally technical questions.
+
+    Format and Style:
+    - Sound natural, like a real human interviewer.
+    - Start with a greeting and a short self-introduction.
+    - Ask the candidate to introduce themselves.
+    - Ask one question per line (no numbering, no explanations).
+    - Avoid robotic phrasing or lists — every question should sound human and spontaneous.
+    - Prefer open-ended questions (e.g., “Can you tell me about…” rather than “What is…”).
+    - Then move to:
+        1. **Personality / Communication questions** (e.g., confidence, motivation, strengths)
+        2. **Behavioral / HR questions** (e.g., team challenges, problem-solving, adaptability)
+        3. **Situational / Decision-making questions**
+        4. **Technical / OOP / Database / Framework questions** based on skills listed
+        5. **Finish with one wrap-up question (e.g., “Do you have any questions for me?”)
+    - Make technical questions slightly challenging for the candidate's experience level.
+    - Output only one question per line (no numbering or explanations).
+
+    Example format:
+    Hi, I’m your interviewer for today. How are you feeling?
+    Could you please introduce yourself?
+    Can you share a project that you’re most proud of?
+    Describe a time you solved a complex issue under pressure.
+    How would you optimize performance in a large-scale {job_title.lower()} system?
     """
 
     # ✅ Get questions from Gemini
@@ -100,15 +127,13 @@ def submit_answer(
 
         # 🔹 Build prompt
         prompt = f"""
-        You are an expert technical interviewer.
-        Candidate Info:
-          - Experience: {experience} years
-          - Skills: {candidate_skills}
-        Job Description: {job_description}
-        Required Skills: {required_skills}
+        You are an interviewer continuing an ongoing conversation.
+        The candidate just answered this question:
+        "{question_text}"
+        Answer: "{answer_text}"
 
-        Question: {question_text}
-        Candidate Answer: {answer_text}
+        Given their response, generate the next relevant follow-up interview question.
+        Maintain a human, conversational tone. Ask only one question.
 
         Rate the candidate's answer from 0 to 100 based on:
         - Correctness
