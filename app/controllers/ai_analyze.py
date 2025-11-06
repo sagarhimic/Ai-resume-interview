@@ -138,7 +138,7 @@ async def analyze_frame(
                         "alert": False
                     }
             else:
-            last_face_time = now  # reset idle timer when face found
+                last_face_time = now  # reset idle timer when face found
 
         # ── PROXY DETECTION ───────────────────────
         is_proxy = False
