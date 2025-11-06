@@ -109,10 +109,10 @@ def submit_answer(
     candidate_id: int = Form(...),
     question_id: int = Form(...),
     answer_text: str = Form(...),
-    # candidate_skills: str = Form(...),
-    # experience: str = Form(...),
-    # job_description: str = Form(...),
-    # required_skills: str = Form(...),
+    candidate_skills: str = Form(...),
+    experience: str = Form(...),
+    job_description: str = Form(...),
+    required_skills: str = Form(...),
     current_user: InterviewCandidateDetails = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
