@@ -7,6 +7,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.inactivity_log import InactivityLog
 from app.config.database import get_db
+import time
 
 
 # Initialize Mediapipe models
@@ -17,6 +18,11 @@ last_face_encoding: Optional[np.ndarray] = None
 face_missing_counter = 0
 no_lip_counter = 0
 
+# Add time trackers
+last_face_time = time.time()
+last_lip_time = time.time()
+
+IDLE_THRESHOLD = 20  # 20 seconds
 
 # ────────────────────────────────────────────────
 # Helper: log_event → Save suspicious behavior to DB
@@ -90,7 +96,7 @@ async def analyze_frame(
     frame: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    global last_face_encoding, face_missing_counter, no_lip_counter
+    global last_face_encoding, face_missing_counter, no_lip_counter, last_face_time, last_lip_time
 
     try:
         # Read frame
@@ -109,49 +115,71 @@ async def analyze_frame(
         # 3️⃣ Extract face encoding for proxy detection
         current_encoding = extract_face_embedding(img)
 
+        now = time.time()
+        idle_reason = None
+
         # ── Face not found (handle and log)
         if current_encoding is None:
             face_missing_counter += 1
             if face_missing_counter >= 3:
                 log_event(db, candidate_id, "face_missing", "No face detected 3 consecutive frames", "warning")
                 face_missing_counter = 0  # reset after logging
-            return {
-                "candidate_id": candidate_id,
-                "alert": False,
-                "lip_sync": bool(lip_sync),
-                "expression": expression,
-                "message": "No face detected"
-            }
 
-        # Reset if face is found
-        face_missing_counter = 0
+        # Check idle threshold for no face
+            if now - last_face_time >= IDLE_THRESHOLD:
+                idle_reason = "No face detected for 20 seconds"
+                log_event(db, candidate_id, "idle_detected", idle_reason, "warning")
+                last_face_time = now  # reset timer after logging
+                return {
+                        "candidate_id": candidate_id,
+                        "status": "idle",
+                        "reason": idle_reason,
+                        "expression": expression,
+                        "alert": False
+                    }
+            else:
+            last_face_time = now  # reset idle timer when face found
 
-        # ── Proxy detection: compare face embeddings
+        # ── PROXY DETECTION ───────────────────────
         is_proxy = False
         if last_face_encoding is not None:
             distance = np.linalg.norm(current_encoding - last_face_encoding)
             if distance > 0.15:
                 is_proxy = True
-                log_event(db, candidate_id, "proxy_detected", f"Proxy face detected (distance={distance:.2f})", "critical")
+                log_event(db, candidate_id, "proxy_detected",
+                          f"Proxy face detected (distance={distance:.2f})", "critical")
 
-        # Update last encoding
         last_face_encoding = current_encoding
 
-        # ── Log if user not speaking for 5 frames (~5 seconds)
+        # ── NO LIP MOVEMENT ───────────────────────
         if not lip_sync:
             no_lip_counter += 1
             if no_lip_counter >= 5:
                 log_event(db, candidate_id, "no_lip_movement", "No lip movement for 5 frames", "info")
-                no_lip_counter = 0
+
+            # Check idle threshold for no lip
+            if now - last_lip_time >= IDLE_THRESHOLD:
+                idle_reason = "No lip movement for 20 seconds"
+                log_event(db, candidate_id, "idle_detected", idle_reason, "warning")
+                last_lip_time = now  # reset timer
+                return {
+                    "candidate_id": candidate_id,
+                    "status": "idle",
+                    "reason": idle_reason,
+                    "expression": expression,
+                    "alert": False
+                }
         else:
             no_lip_counter = 0
+            last_lip_time = now
 
-        # ✅ Return final response
+        # ✅ Return normal active response
         return {
             "candidate_id": candidate_id,
             "lip_sync": bool(lip_sync),
             "expression": expression,
             "alert": is_proxy,
+            "status": "active",
             "message": "Proxy detected" if is_proxy else "OK",
         }
 
