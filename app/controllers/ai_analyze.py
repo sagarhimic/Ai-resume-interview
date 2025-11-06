@@ -87,6 +87,17 @@ def detect_lip_movement(frame: np.ndarray) -> bool:
         lip_distance = abs(upper_lip.y - lower_lip.y)
         return lip_distance > 0.02
 
+# ────────────────────────────────────────────────
+# Helper: detect_multiple_faces
+# ────────────────────────────────────────────────
+def count_faces(frame: np.ndarray) -> int:
+    """Return number of faces detected in the frame using Mediapipe."""
+    with mp.solutions.face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.5) as detector:
+        results = detector.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        if not results.detections:
+            return 0
+        return len(results.detections)
+
 
 # ────────────────────────────────────────────────
 # Endpoint: analyze_frame
@@ -140,6 +151,7 @@ async def analyze_frame(
             else:
                 last_face_time = now  # reset idle timer when face found
 
+
         # ── PROXY DETECTION ───────────────────────
         is_proxy = False
         if last_face_encoding is not None:
@@ -172,6 +184,18 @@ async def analyze_frame(
         else:
             no_lip_counter = 0
             last_lip_time = now
+
+        # ── Multi-face detection ───────────────────────
+        face_count = count_faces(img)
+
+        if face_count > 1:
+            log_event(db, candidate_id, "proxy_detected", f"Multiple ({face_count}) faces detected", "critical")
+            return {
+                "candidate_id": candidate_id,
+                "status": "paused",
+                "reason": "Multiple faces detected — possible proxy.",
+                "alert": True
+            }
 
         # ✅ Return normal active response
         return {
