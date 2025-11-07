@@ -12,10 +12,13 @@ import re
 def get_candidate_answers(candidate_id: int, current_user: InterviewCandidateDetails = Depends(get_current_user),
     db: Session = Depends(get_db)):
 
-    candidate_answers = db.query(CandidateAnswer)
+    # ✅ Corrected query - using order_by properly
+    candidate_answers = (
+        db.query(CandidateAnswer)
         .filter(CandidateAnswer.candidate_id == candidate_id)
-        .order_by(desc(CandidateAnswer.created_at))
+        .order_by(CandidateAnswer.created_at.desc())  # or desc(CandidateAnswer.created_at)
         .all()
+    )
 
     if not candidate_answers:
         raise HTTPException(status_code=404, detail="No answers found for this candidate")
