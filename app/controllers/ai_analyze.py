@@ -95,7 +95,7 @@ def get_face_boxes(frame):
             width = max(0, min(width, w - x))
             height = max(0, min(height, h - y))
 
-            score = float(det.score[0]) if det.score else None
+            score = float(det.score[0]) if det.score and len(det.score) > 0 else 0.0
             boxes.append({"x": x, "y": y, "w": width, "h": height, "score": score})
     return boxes
 # ────────────────────────────────────────────────
