@@ -110,8 +110,7 @@ def count_faces(frame: np.ndarray) -> int:
 # ────────────────────────────────────────────────
 async def analyze_frame(
     candidate_id: str = Form(...),
-    frame: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    frame: UploadFile = File(...)
 ):
     global last_face_encoding, face_missing_counter, no_lip_counter, last_face_time, last_lip_time, last_expression, last_expression_time
 
