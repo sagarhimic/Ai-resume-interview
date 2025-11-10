@@ -76,8 +76,7 @@ def detect_lip_movement(frame: np.ndarray) -> bool:
     return abs(upper.y - lower.y) > 0.02
 
 # ────────────────────────────────────────────────
-def get_face_boxes(frame: np.ndarray):
-    """Return bounding boxes (x, y, w, h) for detected faces."""
+def get_face_boxes(frame):
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = face_detector.process(rgb)
     boxes = []
@@ -89,9 +88,16 @@ def get_face_boxes(frame: np.ndarray):
             y = int(bbox.ymin * h)
             width = int(bbox.width * w)
             height = int(bbox.height * h)
-            boxes.append({"x": x, "y": y, "w": width, "h": height})
-    return boxes
 
+            # clamp
+            x = max(0, min(x, w-1))
+            y = max(0, min(y, h-1))
+            width = max(0, min(width, w - x))
+            height = max(0, min(height, h - y))
+
+            score = float(det.score[0]) if det.score else None
+            boxes.append({"x": x, "y": y, "w": width, "h": height, "score": score})
+    return boxes
 # ────────────────────────────────────────────────
 def count_faces(frame: np.ndarray) -> int:
     """Detect number of faces using Mediapipe FaceDetection"""
