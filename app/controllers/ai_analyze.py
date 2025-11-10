@@ -76,6 +76,23 @@ def detect_lip_movement(frame: np.ndarray) -> bool:
     return abs(upper.y - lower.y) > 0.02
 
 # ────────────────────────────────────────────────
+def get_face_boxes(frame: np.ndarray):
+    """Return bounding boxes (x, y, w, h) for detected faces."""
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = face_detector.process(rgb)
+    boxes = []
+    if results.detections:
+        h, w, _ = frame.shape
+        for det in results.detections:
+            bbox = det.location_data.relative_bounding_box
+            x = int(bbox.xmin * w)
+            y = int(bbox.ymin * h)
+            width = int(bbox.width * w)
+            height = int(bbox.height * h)
+            boxes.append({"x": x, "y": y, "w": width, "h": height})
+    return boxes
+
+# ────────────────────────────────────────────────
 def count_faces(frame: np.ndarray) -> int:
     """Detect number of faces using Mediapipe FaceDetection"""
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -90,7 +107,7 @@ async def analyze_frame(
     frame: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    global last_face_encoding, face_missing_counter, no_lip_counter, last_face_time, last_lip_time
+    global last_face_encoding, face_missing_counter, no_lip_counter, last_face_time, last_lip_time, last_expression, last_expression_time
 
     try:
         content = await frame.read()
@@ -101,16 +118,18 @@ async def analyze_frame(
 
         now = time.time()
         idle_reason = None
-
         # 1️⃣ Detect number of faces first (⚡ avoids false idle)
+        face_boxes = get_face_boxes(img)
         face_count = count_faces(img)
+
         if face_count > 1:
             log_event(db, candidate_id, "proxy_detected", f"Multiple ({face_count}) faces detected", "critical")
             return {
                 "candidate_id": candidate_id,
                 "status": "paused",
                 "reason": "Multiple faces detected — possible proxy.",
-                "alert": True
+                "alert": True,
+                "face_boxes": face_boxes
             }
 
         # 2️⃣ Lip movement
@@ -142,7 +161,8 @@ async def analyze_frame(
                     "status": "idle",
                     "reason": idle_reason,
                     "expression": expression,
-                    "alert": False
+                    "alert": False,
+                    "face_boxes": face_boxes
                 }
         else:
             last_face_time = now
@@ -170,7 +190,8 @@ async def analyze_frame(
                     "status": "idle_for_submission",
                     "reason": idle_reason,
                     "expression": expression,
-                    "alert": False
+                    "alert": False,
+                    "face_boxes": face_boxes
                 }
         else:
             no_lip_counter = 0
@@ -183,7 +204,8 @@ async def analyze_frame(
             "expression": expression,
             "alert": is_proxy,
             "status": "active",
-            "message": "Proxy detected" if is_proxy else "OK"
+            "message": "Proxy detected" if is_proxy else "OK",
+            "face_boxes": face_boxes
         }
 
     except Exception as e:
