@@ -3,6 +3,7 @@ from app.config.database import get_db
 from sqlalchemy.orm import Session
 import os
 from datetime import datetime
+from app.controllers.records import upload_full_video, upload_question_audio
 
 router = APIRouter()
 
