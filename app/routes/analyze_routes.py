@@ -10,9 +10,9 @@ router = APIRouter(tags=["AI Frame Analysis"])
 
 
 @router.post("/analyze_frame/")
-async def ai_analyze_frame(candidate_id: str = Form(...), frame: UploadFile = File(...)):
+async def ai_analyze_frame(candidate_id: str = Form(...), frame: UploadFile = File(...), db: Session = Depends(get_db)):
     """Route for analyzing webcam frame"""
     try:
-        return await analyze_frame(candidate_id, frame)
+        return await analyze_frame(candidate_id, frame, db)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
