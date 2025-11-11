@@ -105,6 +105,81 @@ def generate_questions(
 # ---------------- Submit Candidate Answer ----------------
 
 # ---------------- Submit Candidate Answer ----------------
+# def submit_answer(
+#     candidate_id: int = Form(...),
+#     question_id: int = Form(...),
+#     answer_text: str = Form(...),
+#     candidate_skills: str = Form(...),
+#     experience: str = Form(...),
+#     job_description: str = Form(...),
+#     required_skills: str = Form(...),
+#     current_user: InterviewCandidateDetails = Depends(get_current_user),
+#     db: Session = Depends(get_db)
+# ):
+#     db = SessionLocal()
+#     try:
+#         # 🔹 Fetch question text immediately and store it before session closes
+#         question = db.query(InterviewQuestion).filter_by(id=question_id).first()
+#         if not question:
+#             return {"error": f"Question with ID {question_id} not found"}
+#
+#         question_text = question.question_text  # ✅ store before commit/close
+#
+#         # 🔹 Build prompt
+#         prompt = f"""
+#         You are an interviewer continuing an ongoing conversation.
+#         The candidate just answered this question:
+#         "{question_text}"
+#         Answer: "{answer_text}"
+#
+#         Given their response, generate the next relevant follow-up interview question.
+#         Maintain a human, conversational tone. Ask only one question.
+#
+#         Rate the candidate's answer from 0 to 100 based on:
+#         - Correctness
+#         - Completeness
+#         - Relevance to the question and the job role
+#
+#         Respond only with a numeric score (e.g., 85).
+#         """
+#
+#         # 🔹 Gemini evaluation
+#         try:
+#             response = client.models.generate_content(
+#                 model="gemini-2.0-flash",
+#                 contents=prompt
+#             )
+#             score_text = response.text.strip()
+#         except Exception as e:
+#             return {"error": f"Gemini API Error: {str(e)}"}
+#
+#         # 🔹 Parse numeric score
+#         try:
+#             score = float(score_text)
+#         except ValueError:
+#             score = 0.0
+#
+#         # 🔹 Save to DB
+#         ans = CandidateAnswer(
+#             candidate_id=candidate_id,
+#             question_id=question_id,
+#             answer_text=answer_text,
+#             accuracy_score=score
+#         )
+#         db.add(ans)
+#         db.commit()
+#         db.refresh(ans)
+#
+#         return {
+#             "status": "success",
+#             "question": question_text,
+#             "answer": answer_text,
+#             "accuracy_score": score
+#         }
+#
+#     finally:
+#         db.close()
+
 def submit_answer(
     candidate_id: int = Form(...),
     question_id: int = Form(...),
@@ -118,48 +193,99 @@ def submit_answer(
 ):
     db = SessionLocal()
     try:
-        # 🔹 Fetch question text immediately and store it before session closes
+        # 🔹 Fetch question text
         question = db.query(InterviewQuestion).filter_by(id=question_id).first()
         if not question:
             return {"error": f"Question with ID {question_id} not found"}
 
-        question_text = question.question_text  # ✅ store before commit/close
+        question_text = question.question_text.strip()
 
-        # 🔹 Build prompt
-        prompt = f"""
-        You are an interviewer continuing an ongoing conversation.
-        The candidate just answered this question:
-        "{question_text}"
-        Answer: "{answer_text}"
+        # 🔹 Detect skip / uncertain answers
+        skip_phrases = [
+            "don't know", "dont know", "not sure", "no idea",
+            "skip", "next question", "ask another", "repeat please",
+            "sorry", "I have no answer", "I cannot answer"
+        ]
 
-        Given their response, generate the next relevant follow-up interview question.
-        Maintain a human, conversational tone. Ask only one question.
+        lower_answer = answer_text.lower().strip()
+        is_skip = any(p in lower_answer for p in skip_phrases)
 
-        Rate the candidate's answer from 0 to 100 based on:
-        - Correctness
-        - Completeness
-        - Relevance to the question and the job role
+        if is_skip:
+            # 🧠 Generate a new follow-up question instead of scoring
+            follow_prompt = f"""
+            You are an adaptive interviewer.
+            The candidate could not answer or skipped the question:
+            "{question_text}"
 
-        Respond only with a numeric score (e.g., 85).
+            Please ask a **simpler or related follow-up question**
+            that helps the candidate re-engage.
+            Make it conversational and natural (no bullet points or numbers).
+            """
+
+            try:
+                follow_response = client.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=follow_prompt
+                )
+                next_question = follow_response.text.strip()
+            except Exception as e:
+                next_question = "Let's try something different. Can you tell me about your last project?"
+
+            # Save skipped answer with score 0
+            skipped_answer = CandidateAnswer(
+                candidate_id=candidate_id,
+                question_id=question_id,
+                answer_text=answer_text,
+                accuracy_score=0.0
+            )
+            db.add(skipped_answer)
+            db.commit()
+            db.refresh(skipped_answer)
+
+            return {
+                "status": "skipped",
+                "reason": "Candidate requested to skip or was unsure.",
+                "next_question": next_question,
+                "question_id": question_id,
+                "answer": answer_text,
+                "accuracy_score": 0.0
+            }
+
+        # ✅ Regular scoring path
+        eval_prompt = f"""
+        You are a professional interviewer evaluating a candidate's response.
+
+        Question: "{question_text}"
+        Candidate Answer: "{answer_text}"
+
+        1. Rate this answer from 0 to 100 for correctness, completeness, and relevance.
+        2. Then, generate the **next relevant follow-up interview question** naturally.
         """
 
-        # 🔹 Gemini evaluation
         try:
-            response = client.models.generate_content(
+            eval_response = client.models.generate_content(
                 model="gemini-2.0-flash",
-                contents=prompt
+                contents=eval_prompt
             )
-            score_text = response.text.strip()
+            full_text = eval_response.text.strip()
         except Exception as e:
             return {"error": f"Gemini API Error: {str(e)}"}
 
-        # 🔹 Parse numeric score
-        try:
-            score = float(score_text)
-        except ValueError:
-            score = 0.0
+        # Split Gemini output into score + next question
+        lines = full_text.split("\n")
+        score = 0.0
+        next_question = "Could you elaborate further on your previous answer?"
 
-        # 🔹 Save to DB
+        for line in lines:
+            if any(char.isdigit() for char in line):
+                try:
+                    score = float(line.strip().replace("%", ""))
+                except:
+                    score = 0.0
+            elif len(line.strip()) > 10:
+                next_question = line.strip()
+
+        # Save normal answer
         ans = CandidateAnswer(
             candidate_id=candidate_id,
             question_id=question_id,
@@ -174,7 +300,8 @@ def submit_answer(
             "status": "success",
             "question": question_text,
             "answer": answer_text,
-            "accuracy_score": score
+            "accuracy_score": score,
+            "next_question": next_question
         }
 
     finally:
