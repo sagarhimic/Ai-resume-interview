@@ -14,6 +14,8 @@ async def upload_question_audio(candidate_id: str = Form(...),question_id: str =
         path = os.path.join(UPLOAD_DIR, fname)
         with open(path, "wb") as f:
             f.write(await audio_file.read())
+
+        db = SessionLocal()
         # --- Save record in DB ---
         record = CandidateAudio(
             candidate_id=candidate_id,
@@ -47,6 +49,7 @@ async def upload_full_video(candidate_id: str = Form(...),video_file: UploadFile
             f.write(await video_file.read())
 
         # --- Save DB record ---
+        db = SessionLocal()
         record = CandidateFullVideo(
             candidate_id=candidate_id,
             video_file=path,
