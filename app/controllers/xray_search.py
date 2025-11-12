@@ -1,53 +1,93 @@
 # app/controllers/xray_search.py
 from fastapi import APIRouter, Form, HTTPException
-import requests
-import os
+import requests, os, concurrent.futures
+from dotenv import load_dotenv
 
-router = APIRouter(tags=["X-Ray Search"])
-
+# Load environment variables
+load_dotenv()
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
-async def xray_search(role: str = Form(...), location: str = Form(...)):
-    """
-    Perform AI-based X-Ray search for candidate profiles.
-    """
+# Base Serper API URL
+SERPER_URL = "https://google.serper.dev/search"
+
+# Common headers for Serper API
+HEADERS = {
+    "X-API-KEY": SERPER_API_KEY,
+    "Content-Type": "application/json"
+}
+
+# Supported platforms
+PLATFORMS = {
+    "LinkedIn": "site:linkedin.com/in",
+    "GitHub": "site:github.com",
+    "Stack Overflow": "site:stackoverflow.com/users",
+    "Indeed": "site:indeed.com/profile",
+    "Naukri": "site:naukri.com",
+    "HackerRank": "site:hackerrank.com/profile"
+}
+
+def fetch_platform_results(platform_name, query):
+    """Helper to perform search on one platform"""
     try:
-        # Build dynamic Boolean query
-        query = f'site:linkedin.com/in ("{role}") "{location}" -jobs -hiring'
+        payload = {"q": query, "num": 10}
+        response = requests.post(SERPER_URL, headers=HEADERS, json=payload)
+        if response.status_code != 200:
+            return []
 
-        headers = {
-            "X-API-KEY": SERPER_API_KEY,
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "q": query,
-            "num": 10  # number of results
-        }
-
-        resp = requests.post("https://google.serper.dev/search", headers=headers, json=payload)
-        data = resp.json()
-
+        data = response.json()
         results = []
         for item in data.get("organic", []):
-            link = item.get("link")
-            title = item.get("title")
-            snippet = item.get("snippet")
-
             results.append({
-                "name": title.split(" - ")[0] if title else None,
-                "role": role,
-                "location": location,
-                "profile_url": link,
-                "summary": snippet
+                "platform": platform_name,
+                "title": item.get("title"),
+                "profile_url": item.get("link"),
+                "summary": item.get("snippet", "")
             })
+        return results
+
+    except Exception as e:
+        print(f"⚠️ Error fetching {platform_name}: {e}")
+        return []
+
+
+def xray_search(role: str, location: str):
+    """Perform X-Ray search across multiple job platforms."""
+    if not SERPER_API_KEY:
+        raise HTTPException(status_code=500, detail="Missing SERPER_API_KEY environment variable")
+
+    try:
+        # Build search queries per platform
+        queries = {
+            name: f'{pattern} ("{role}") "{location}" -jobs -hiring'
+            for name, pattern in PLATFORMS.items()
+        }
+
+        all_results = []
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(fetch_platform_results, name, query): name
+                for name, query in queries.items()
+            }
+
+            for future in concurrent.futures.as_completed(futures):
+                platform = futures[future]
+                try:
+                    result = future.result()
+                    all_results.extend(result)
+                except Exception as e:
+                    print(f"Error from {platform}: {e}")
+
+        # Deduplicate profiles by URL
+        unique_profiles = {p["profile_url"]: p for p in all_results}.values()
 
         return {
             "status": "success",
-            "query": query,
-            "results_found": len(results),
-            "profiles": results
+            "role": role,
+            "location": location,
+            "total_platforms_checked": len(PLATFORMS),
+            "total_results": len(unique_profiles),
+            "profiles": list(unique_profiles)
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")

@@ -8,5 +8,5 @@ router = APIRouter()
 
 @router.post("/xray_search/")
 
-async def getProfiles(role: str = Form(...), location: str = Form(...)):
-    return await xray_search(role, location)
+def getProfiles(role: str = Form(...), location: str = Form(...)):
+    return xray_search(role, location)
