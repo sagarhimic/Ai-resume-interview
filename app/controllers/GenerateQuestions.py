@@ -182,6 +182,7 @@ def generate_questions(
 
 def submit_answer(
     candidate_id: int = Form(...),
+    meeting_id: str = Form(...),
     question_id: int = Form(...),
     answer_text: str = Form(...),
     candidate_skills: str = Form(...),
@@ -234,6 +235,7 @@ def submit_answer(
             # Save skipped answer with score 0
             skipped_answer = CandidateAnswer(
                 candidate_id=candidate_id,
+                meeting_id=meeting_id,
                 question_id=question_id,
                 answer_text=answer_text,
                 accuracy_score=0.0
@@ -258,8 +260,10 @@ def submit_answer(
         Question: "{question_text}"
         Candidate Answer: "{answer_text}"
 
-        1. Rate this answer from 0 to 100 for correctness, completeness, and relevance.
-        2. Then, generate the **next relevant follow-up interview question** naturally.
+        Please return your result in this exact format:
+
+        Score: [numeric value between 0 and 100]
+        Next Question: [a natural follow-up question]
         """
 
         try:
@@ -271,23 +275,26 @@ def submit_answer(
         except Exception as e:
             return {"error": f"Gemini API Error: {str(e)}"}
 
-        # Split Gemini output into score + next question
-        lines = full_text.split("\n")
-        score = 0.0
-        next_question = "Could you elaborate further on your previous answer?"
+        # 🔍 Extract score and question using regex
+        import re
 
-        for line in lines:
-            if any(char.isdigit() for char in line):
-                try:
-                    score = float(line.strip().replace("%", ""))
-                except:
-                    score = 0.0
-            elif len(line.strip()) > 10:
-                next_question = line.strip()
+        score_match = re.search(r"(?i)score[:\-\s]*([0-9]+(?:\.[0-9]*)?)", full_text)
+        question_match = re.search(r"(?i)next\s*question[:\-\s]*(.*)", full_text)
 
-        # Save normal answer
+        score = float(score_match.group(1)) if score_match else 0.0
+        next_question = (
+            question_match.group(1).strip()
+            if question_match and len(question_match.group(1).strip()) > 5
+            else "Could you elaborate further on your previous answer?"
+        )
+
+        # 🧠 Safety: Gemini sometimes gives extra newlines
+        next_question = next_question.split("\n")[0].strip()
+
+        # 💾 Save normal answer to DB
         ans = CandidateAnswer(
             candidate_id=candidate_id,
+            meeting_id=meeting_id,
             question_id=question_id,
             answer_text=answer_text,
             accuracy_score=score
@@ -301,7 +308,8 @@ def submit_answer(
             "question": question_text,
             "answer": answer_text,
             "accuracy_score": score,
-            "next_question": next_question
+            "next_question": next_question,
+            "raw_output": full_text  # (optional: for debugging)
         }
 
     finally:

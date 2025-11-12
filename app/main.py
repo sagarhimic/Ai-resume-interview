@@ -10,7 +10,9 @@ from .routes import (
     profile_routes,
     analyze_routes,
     record_routes,
-    candidate_que_ans_routes
+    candidate_que_ans_routes,
+    generate_jd_routes,
+    xray_search_routes
 )
 
 app = FastAPI(title="AI Interview Analysis API")
@@ -69,3 +71,5 @@ app.include_router(profile_routes.router)
 app.include_router(analyze_routes.router)
 app.include_router(record_routes.router)
 app.include_router(candidate_que_ans_routes.router)
+app.include_router(generate_jd_routes.router)
+app.include_router(xray_search_routes.router)

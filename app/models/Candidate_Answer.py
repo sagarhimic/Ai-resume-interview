@@ -7,6 +7,7 @@ class CandidateAnswer(Base):
 
     id = Column(Integer, primary_key=True)
     candidate_id = Column(Integer, ForeignKey("interview_candidate_details.id"))
+    meeting_id = Column(String(50), nullable=True)
     question_id = Column(Integer, ForeignKey("interview_questions.id"))
     answer_text = Column(Text, nullable=True)
     accuracy_score = Column(Float, nullable=True)

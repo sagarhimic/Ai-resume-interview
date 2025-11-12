@@ -53,6 +53,7 @@ def userLogin(
         "token_type": "bearer",
         "data": {
             "candidate_id": user.id,
+            "meeting_id": user.meeting_id,
             "job_title": user.job_title,
             "job_description": user.job_description,
             "duration": user.interview_duration,

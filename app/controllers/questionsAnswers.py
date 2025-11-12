@@ -9,13 +9,14 @@ from app.config.auth import create_access_token, get_current_user
 import re
 
 
-def get_candidate_answers(candidate_id: int, current_user: InterviewCandidateDetails = Depends(get_current_user),
+def get_candidate_answers(candidate_id: int, meeting_id: str, current_user: InterviewCandidateDetails = Depends(get_current_user),
     db: Session = Depends(get_db)):
 
     # ✅ Corrected query - using order_by properly
     candidate_answers = (
         db.query(CandidateAnswer)
         .filter(CandidateAnswer.candidate_id == candidate_id)
+        .filter(CandidateAnswer.meeting_id == meeting_id)
         .order_by(CandidateAnswer.created_at.desc())  # or desc(CandidateAnswer.created_at)
         .all()
     )

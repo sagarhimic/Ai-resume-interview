@@ -6,7 +6,7 @@ from deepface import DeepFace
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.inactivity_log import InactivityLog
-from app.config.database import get_db
+from app.config.database import get_db, SessionLocal
 import time
 
 # Initialize Mediapipe globally (⚡ much faster + avoids context leaks)
@@ -184,11 +184,14 @@ async def analyze_frame(
                           f"Proxy face detected (distance={distance:.2f})", "critical")
         last_face_encoding = current_encoding
 
-        # 5️⃣ Idle detection (no face movement + no expression for 25s)
+        # 🧠 Improved Idle Detection (combines lip + expression + stability)
         if not lip_sync:
             no_lip_counter += 1
-            if now - last_lip_time >= IDLE_THRESHOLD and (now - last_expression_time >= IDLE_THRESHOLD):
-                idle_reason = "No lip movement or facial expression for 25 seconds"
+            # Check inactivity across both lips and expressions
+            inactive_time = min(now - last_lip_time, now - last_expression_time)
+
+            if inactive_time >= IDLE_THRESHOLD:
+                idle_reason = f"No visible speech or facial change for {IDLE_THRESHOLD} seconds"
                 log_event(db, candidate_id, "idle_detected", idle_reason, "warning")
                 last_lip_time = now
                 last_expression_time = now
@@ -203,6 +206,8 @@ async def analyze_frame(
         else:
             no_lip_counter = 0
             last_lip_time = now
+            last_expression_time = now  # reset both if user moves/talks
+
 
         # ✅ Return active response
         return {

@@ -9,7 +9,7 @@ router = APIRouter()
 
 @router.post("/get-candidate-answers/")
 
-def get_candidate_question_answers(candidate_id: int = Form(...),current_user: InterviewCandidateDetails = Depends(get_current_user),
+def get_candidate_question_answers(candidate_id: int = Form(...), meeting_id: str = Form(...), current_user: InterviewCandidateDetails = Depends(get_current_user),
                             db: Session = Depends(get_db)):
 
-    return get_candidate_answers(candidate_id,current_user,db)
+    return get_candidate_answers(candidate_id,meeting_id,current_user,db)
