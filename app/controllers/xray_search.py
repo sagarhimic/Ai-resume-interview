@@ -1,93 +1,169 @@
 # app/controllers/xray_search.py
-from fastapi import APIRouter, Form, HTTPException
-import requests, os, concurrent.futures
+from fastapi import HTTPException
+import requests, os, concurrent.futures, re
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
+
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
-# Base Serper API URL
+if not SERPER_API_KEY:
+    raise Exception("❌ Missing SERPER_API_KEY in environment variables")
+
 SERPER_URL = "https://google.serper.dev/search"
 
-# Common headers for Serper API
 HEADERS = {
     "X-API-KEY": SERPER_API_KEY,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
 }
 
-# Supported platforms
 PLATFORMS = {
     "LinkedIn": "site:linkedin.com/in",
     "GitHub": "site:github.com",
-    "Stack Overflow": "site:stackoverflow.com/users",
+    "StackOverflow": "site:stackoverflow.com/users",
     "Indeed": "site:indeed.com/profile",
     "Naukri": "site:naukri.com",
-    "HackerRank": "site:hackerrank.com/profile"
+    "HackerRank": "site:hackerrank.com/profile",
 }
 
-def fetch_platform_results(platform_name, query):
-    """Helper to perform search on one platform"""
-    try:
-        payload = {"q": query, "num": 10}
-        response = requests.post(SERPER_URL, headers=HEADERS, json=payload)
-        if response.status_code != 200:
-            return []
+# -------------------------
+# Extract Experience Helper
+# -------------------------
+def extract_experience(text: str):
+    if not text:
+        return None
 
-        data = response.json()
-        results = []
-        for item in data.get("organic", []):
-            results.append({
-                "platform": platform_name,
-                "title": item.get("title"),
-                "profile_url": item.get("link"),
-                "summary": item.get("snippet", "")
-            })
-        return results
+    patterns = [
+        r"(\d+)\+?\s*years",
+        r"(\d+)\s*yrs",
+        r"(\d+)\s*yr",
+        r"(\d+)\s*\+?\s*experience"
+    ]
 
-    except Exception as e:
-        print(f"⚠️ Error fetching {platform_name}: {e}")
-        return []
+    for p in patterns:
+        m = re.search(p, text, re.IGNORECASE)
+        if m:
+            try:
+                return int(m.group(1))
+            except:
+                return None
+    return None
 
+# -------------------------
+# Fetch results for a platform
+# -------------------------
+def fetch_platform_results(platform_name: str, query: str, pages: int):
+    all_results = []
 
-def xray_search(role: str, location: str):
-    """Perform X-Ray search across multiple job platforms."""
-    if not SERPER_API_KEY:
-        raise HTTPException(status_code=500, detail="Missing SERPER_API_KEY environment variable")
-
-    try:
-        # Build search queries per platform
-        queries = {
-            name: f'{pattern} ("{role}") "{location}" -jobs -hiring'
-            for name, pattern in PLATFORMS.items()
+    for page in range(1, pages + 1):
+        payload = {
+            "q": query,
+            "num": 10,
+            "page": page
         }
 
-        all_results = []
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = {
-                executor.submit(fetch_platform_results, name, query): name
-                for name, query in queries.items()
-            }
+        try:
+            resp = requests.post(SERPER_URL, headers=HEADERS, json=payload)
+            if resp.status_code != 200:
+                continue
 
-            for future in concurrent.futures.as_completed(futures):
-                platform = futures[future]
-                try:
-                    result = future.result()
-                    all_results.extend(result)
-                except Exception as e:
-                    print(f"Error from {platform}: {e}")
+            data = resp.json()
+            organic = data.get("organic", [])
 
-        # Deduplicate profiles by URL
-        unique_profiles = {p["profile_url"]: p for p in all_results}.values()
+            for item in organic:
+                all_results.append({
+                    "platform": platform_name,
+                    "title": item.get("title"),
+                    "profile_url": item.get("link"),
+                    "summary": item.get("snippet", "")
+                })
 
-        return {
-            "status": "success",
-            "role": role,
-            "location": location,
-            "total_platforms_checked": len(PLATFORMS),
-            "total_results": len(unique_profiles),
-            "profiles": list(unique_profiles)
+        except Exception as e:
+            print(f"⚠️ Error in {platform_name}: {e}")
+
+    return all_results
+
+def build_skill_query(skills: str):
+    if not skills:
+        return ""
+
+    skill_list = [s.strip() for s in skills.split(",") if s.strip()]
+
+    # AND logic -> more accurate
+    and_query = " ".join(f'"{s}"' for s in skill_list)
+
+    # OR logic -> more results
+    or_query = "(" + " OR ".join(f'"{s}"' for s in skill_list) + ")"
+
+    return f"{and_query} {or_query}"
+
+# -------------------------
+# MAIN X-RAY SEARCH FUNCTION
+# -------------------------
+def xray_search(req: dict):
+
+    role = req.get("role")
+    location = req.get("location")
+    skills = req.get("skills", "")
+    company = req.get("company", "")
+    min_exp = int(req.get("min_exp", 0))
+    max_exp = int(req.get("max_exp", 40))
+    pages = int(req.get("pages", 2))
+
+    if not role or not location:
+        raise HTTPException(status_code=400, detail="role & location are required")
+
+    skill_query = build_skill_query(skills)
+
+    # Build search queries
+    queries = {
+        platform: f'{pattern} ("{role}") "{location}" "{skill_query}" "{company}" -jobs -hiring'
+        for platform, pattern in PLATFORMS.items()
+    }
+
+    all_results = []
+
+    # Multi-threading for speed
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {
+            executor.submit(fetch_platform_results, platform, query, pages): platform
+            for platform, query in queries.items()
         }
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        for future in concurrent.futures.as_completed(futures):
+            platform = futures[future]
+            try:
+                results = future.result()
+                all_results.extend(results)
+            except Exception as e:
+                print(f"❌ Error from {platform}: {e}")
+
+    # Deduplicate by URL
+    unique_profiles = {p["profile_url"]: p for p in all_results}.values()
+
+    # EXPERIENCE FILTER
+    filtered = []
+    for p in unique_profiles:
+        summary = p.get("summary", "")
+        title = p.get("title", "")
+
+        exp = extract_experience(summary) or extract_experience(title)
+        p["experience_years"] = exp
+
+        if exp is None:
+            filtered.append(p)  # optional keep
+        else:
+            if min_exp <= exp <= max_exp:
+                filtered.append(p)
+
+    return {
+        "status": "success",
+        "role": role,
+        "location": location,
+        "skills": skills,
+        "company": company,
+        "exp_range": f"{min_exp} - {max_exp}",
+        "total_before_filter": len(unique_profiles),
+        "total_after_filter": len(filtered),
+        "profiles": filtered
+    }

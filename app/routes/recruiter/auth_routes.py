@@ -5,7 +5,7 @@ from app.config.database import get_db
 from app.config.recruiter_auth import create_access_token, get_password_hash, verify_password
 from app.models.user import User
 
-router = APIRouter(tags=["Authentication"])
+router = APIRouter(tags=["Recruiter Authentication"])
 
 # 🧩 Register New User
 @router.post("/recruiter/register/")

@@ -7,6 +7,7 @@ class InactivityLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(String(50))
+    meeting_id = Column(String(50))
     event_type = Column(String(100))  # e.g. "face_missing", "no_lip_movement", "proxy_detected"
     event_message = Column(String(255))
     severity = Column(String(20))  # info / warning / critical

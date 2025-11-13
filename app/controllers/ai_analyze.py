@@ -28,12 +28,13 @@ last_expression = "unknown"
 last_expression_time = time.time()
 
 # ────────────────────────────────────────────────
-def log_event(db: Session, candidate_id: str, event_type: str, message: str, severity: str = "info"):
+def log_event(db: Session, candidate_id: str, meeting_id: str, event_type: str, message: str, severity: str = "info"):
     """Save suspicious behavior to DB"""
     try:
         db = SessionLocal()
         log = InactivityLog(
             candidate_id=candidate_id,
+            meeting_id=meeting_id,
             event_type=event_type,
             event_message=message,
             severity=severity
@@ -111,6 +112,7 @@ def count_faces(frame: np.ndarray) -> int:
 # ────────────────────────────────────────────────
 async def analyze_frame(
     candidate_id: str = Form(...),
+    meeting_id: str = Form(...),
     frame: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -130,7 +132,7 @@ async def analyze_frame(
         face_count = count_faces(img)
 
         if face_count > 1:
-            log_event(db, candidate_id, "proxy_detected", f"Multiple ({face_count}) faces detected", "critical")
+            log_event(db, candidate_id, meeting_id, "proxy_detected", f"Multiple ({face_count}) faces detected", "critical")
             return {
                 "candidate_id": candidate_id,
                 "status": "paused",
@@ -156,12 +158,12 @@ async def analyze_frame(
         if current_encoding is None:
             face_missing_counter += 1
             if face_missing_counter >= 3:
-                log_event(db, candidate_id, "face_missing", "No face detected 3 consecutive frames", "warning")
+                log_event(db, candidate_id, meeting_id, "face_missing", "No face detected 3 consecutive frames", "warning")
                 face_missing_counter = 0
 
             if now - last_face_time >= IDLE_THRESHOLD:
                 idle_reason = "No face detected for 25 seconds"
-                log_event(db, candidate_id, "idle_detected", idle_reason, "warning")
+                log_event(db, candidate_id, meeting_id, "idle_detected", idle_reason, "warning")
                 last_face_time = now
                 return {
                     "candidate_id": candidate_id,
@@ -180,7 +182,7 @@ async def analyze_frame(
             distance = np.linalg.norm(current_encoding - last_face_encoding)
             if distance > 0.15:
                 is_proxy = True
-                log_event(db, candidate_id, "proxy_detected",
+                log_event(db, candidate_id, meeting_id, "proxy_detected",
                           f"Proxy face detected (distance={distance:.2f})", "critical")
         last_face_encoding = current_encoding
 
@@ -192,7 +194,7 @@ async def analyze_frame(
 
             if inactive_time >= IDLE_THRESHOLD:
                 idle_reason = f"No visible speech or facial change for {IDLE_THRESHOLD} seconds"
-                log_event(db, candidate_id, "idle_detected", idle_reason, "warning")
+                log_event(db, candidate_id, meeting_id, "idle_detected", idle_reason, "warning")
                 last_lip_time = now
                 last_expression_time = now
                 return {
