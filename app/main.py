@@ -14,6 +14,7 @@ from .routes import (
     generate_jd_routes,
     xray_search_routes
 )
+from app.routes.recruiter.auth_routes import router as recruiter_auth_router
 
 app = FastAPI(title="AI Interview Analysis API")
 
@@ -73,3 +74,4 @@ app.include_router(record_routes.router)
 app.include_router(candidate_que_ans_routes.router)
 app.include_router(generate_jd_routes.router)
 app.include_router(xray_search_routes.router)
+app.include_router(recruiter_auth_router.router)
