@@ -22,7 +22,9 @@ def getProfiles(body: XRaySearchRequest):
         "company": "TCS",
         "min_exp": 3,
         "max_exp": 8,
-        "pages": 3
+        "pages": 3,
+        "page": 1,
+        "limit": 20
     }
     """
     try:

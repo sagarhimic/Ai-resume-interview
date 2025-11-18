@@ -109,7 +109,6 @@ def xray_search(req: dict):
     min_exp = int(req.get("min_exp", 0))
     max_exp = int(req.get("max_exp", 40))
     pages = int(req.get("pages", 2))
-
     # NEW Pagination inputs
     page = int(req.get("page", 1))
     limit = int(req.get("limit", 20))
