@@ -110,6 +110,10 @@ def xray_search(req: dict):
     max_exp = int(req.get("max_exp", 40))
     pages = int(req.get("pages", 2))
 
+    # NEW Pagination inputs
+    page = int(req.get("page", 1))
+    limit = int(req.get("limit", 20))
+
     if not role or not location:
         raise HTTPException(status_code=400, detail="role & location are required")
 
@@ -156,6 +160,14 @@ def xray_search(req: dict):
             if min_exp <= exp <= max_exp:
                 filtered.append(p)
 
+    # PAGINATION
+    total_results = len(filtered)
+    total_pages = (total_results + limit - 1) // limit
+    start = (page - 1) * limit
+    end = start + limit
+
+    paginated_results = filtered[start:end]
+
     return {
         "status": "success",
         "role": role,
@@ -164,6 +176,9 @@ def xray_search(req: dict):
         "company": company,
         "exp_range": f"{min_exp} - {max_exp}",
         "total_before_filter": len(unique_profiles),
-        "total_after_filter": len(filtered),
-        "profiles": filtered
+        "total_after_filter": total_results,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "profiles": paginated_results
     }
