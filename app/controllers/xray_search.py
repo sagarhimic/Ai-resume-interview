@@ -312,8 +312,8 @@ def xray_search(req: dict):
     min_exp = int(req.get("min_exp", 0))
     max_exp = int(req.get("max_exp", 40))
     pages = int(req.get("pages", 2))
-    page = int(req.get("page", 1))
-    limit = int(req.get("limit", 20))
+    # page = int(req.get("page", 1))
+    # limit = int(req.get("limit", 20))
 
     if not role or not location:
         raise HTTPException(status_code=400, detail="role & location are required")
@@ -392,12 +392,13 @@ def xray_search(req: dict):
 
     # PAGINATION on scored_sorted
     total_results = len(scored_sorted)
-    total_pages = (total_results + limit - 1) // limit if limit > 0 else 1
-    # clamp page
-    page = max(1, min(page, total_pages or 1))
-    start = (page - 1) * limit
-    end = start + limit
-    paginated = scored_sorted[start:end]
+    # total_pages = (total_results + limit - 1) // limit if limit > 0 else 1
+    # # clamp page
+    # page = max(1, min(page, total_pages or 1))
+    # start = (page - 1) * limit
+    # end = start + limit
+    # paginated = scored_sorted[start:end]
+    paginated = scored_sorted
 
     # Prepare friendly response (strip internal keys but keep score info)
     profiles_out = []
@@ -419,11 +420,11 @@ def xray_search(req: dict):
         "skills": skills,
         "company": company,
         "exp_range": f"{min_exp} - {max_exp}",
-        "total_before_filter": len(all_results),
+        # "total_before_filter": len(all_results),
         "total_unique_profiles": total_results,
         # pagination metadata
-        "page": page,
-        "limit": limit,
-        "total_pages": total_pages,
+        # "page": page,
+        # "limit": limit,
+        # "total_pages": total_pages,
         "profiles": profiles_out
     }

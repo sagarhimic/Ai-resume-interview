@@ -10,5 +10,5 @@ class XRaySearchRequest(BaseModel):
     min_exp: Optional[int] = 0
     max_exp: Optional[int] = 40
     pages: Optional[int] = 2
-    page: int = 1 
-    limit: int = 20
+    # page: int = 1
+    # limit: int = 20
