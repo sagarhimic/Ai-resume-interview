@@ -66,7 +66,8 @@ PLATFORMS = {
     "GitHub": "site:github.com",
     "StackOverflow": "site:stackoverflow.com/users",
     "Indeed": "site:indeed.com/profile",
-    "Naukri": "site:naukri.com",
+    # "Naukri": "site:naukri.com",
+    "Naukri": "site:naukri.com/mnjuser/profile" ,
     "HackerRank": "site:hackerrank.com/profile",
 }
 
