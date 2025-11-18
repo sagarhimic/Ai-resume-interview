@@ -97,6 +97,33 @@ def build_skill_query(skills: str):
 
     return f"{and_query} {or_query}"
 
+def build_location_query(location: str):
+    """
+    Make location filter dynamic.
+    Works for ANY city or country like:
+    Hyderabad, Bangalore, Toronto, New York, Dubai, Canada, etc.
+    """
+
+    loc = location.strip()
+
+    # exclude common foreign countries dynamically
+    exclude_countries = [
+        "USA", "United States", "Canada", "UK", "United Kingdom", "UAE",
+        "Saudi", "Qatar", "Bahrain", "Australia", "New Zealand",
+        "Singapore", "South Africa"
+    ]
+
+    # If user is searching for a country, do NOT exclude that country
+    exclude_part = " ".join([f'-"{c}"' for c in exclude_countries if c.lower() != loc.lower()])
+
+    return (
+        "("
+        f'"{loc}" OR "{loc} City" OR "{loc} Area" OR "{loc}, {loc}" '
+        f'OR "{loc} region" OR "{loc} province" OR "near {loc}"'
+        ") "
+        f"{exclude_part}"
+    )
+
 # -------------------------
 # MAIN X-RAY SEARCH FUNCTION
 # -------------------------
@@ -117,6 +144,7 @@ def xray_search(req: dict):
         raise HTTPException(status_code=400, detail="role & location are required")
 
     skill_query = build_skill_query(skills)
+    # loc_query = build_location_query(location)
 
     # Build search queries
     queries = {
