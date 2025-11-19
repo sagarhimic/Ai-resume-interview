@@ -49,14 +49,14 @@ def extract_platform_name(url: str):
     if "stackoverflow.com" in domain:
         return "StackOverflow"
 
-    if "indeed.com" in domain:
-        return "Indeed"
-
-    if "naukri.com" in domain:
-        return "Naukri"
-
-    if "hackerrank.com" in domain:
-        return "HackerRank"
+    # if "indeed.com" in domain:
+    #     return "Indeed"
+    #
+    # if "naukri.com" in domain:
+    #     return "Naukri"
+    #
+    # if "hackerrank.com" in domain:
+    #     return "HackerRank"
 
     # Default: return clean domain
     return domain.replace("www.", "").title()
@@ -305,6 +305,131 @@ def build_query_variations(pattern: str, role: str, location: str, skill_query: 
 # -------------------------
 # MAIN X-RAY SEARCH FUNCTION
 # -------------------------
+# def xray_search(req: dict):
+#     role = (req.get("role") or "").strip()
+#     location = (req.get("location") or "").strip()
+#     skills = (req.get("skills") or "").strip()
+#     company = (req.get("company") or "").strip()
+#     min_exp = int(req.get("min_exp", 0))
+#     max_exp = int(req.get("max_exp", 40))
+#     pages = int(req.get("pages", 2))
+#     # page = int(req.get("page", 1))
+#     # limit = int(req.get("limit", 20))
+#
+#     if not role or not location:
+#         raise HTTPException(status_code=400, detail="role & location are required")
+#
+#     # prepare skill/company tokens
+#     skill_list = [s.strip() for s in re.split(r',|\|', skills) if s.strip()]
+#     skill_query = build_skill_query(skills)
+#     company_query = build_company_query(company) if company else ""
+#
+#     # For company match checks, create simple variants (unquoted)
+#     company_variants = []
+#     if company:
+#         key = company.strip().lower()
+#         if key in COMPANY_MAPPING:
+#             company_variants = COMPANY_MAPPING[key]
+#         else:
+#             company_variants = [company.strip()]
+#
+#     # Run queries across platforms with multiple variations (parallel)
+#     all_results = []
+#     with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(PLATFORMS) * 3)) as executor:
+#         future_to_query = {}
+#         for platform, pattern in PLATFORMS.items():
+#             q_variations = build_query(pattern, role, location, skill_query, company_query)
+#             # submit each variation
+#             for q in q_variations:
+#                 future = executor.submit(fetch_serper_results, q, pages)
+#                 future_to_query[future] = q
+#
+#         # gather results
+#         for future in concurrent.futures.as_completed(future_to_query):
+#             try:
+#                 res = future.result()
+#                 if res:
+#                     all_results.extend(res)
+#             except Exception as e:
+#                 # ignore single query failures
+#                 print("⚠️ query/fetch error:", e)
+#
+#     # deduplicate by profile_url
+#     unique_map = {}
+#     for item in all_results:
+#         url = item.get("profile_url")
+#         if not url:
+#             continue
+#
+#         platform_name = extract_platform_name(url)
+#
+#         if url not in unique_map:
+#             unique_map[url] = {
+#                 "title": item.get("title"),
+#                 "profile_url": url,
+#                 "summary": item.get("summary"),
+#                 "platforms": [platform_name]
+#             }
+#         else:
+#             # aggregate platforms or snippets if necessary
+#             if platform_name not in unique_map[url]["platforms"]:
+#                 unique_map[url]["platforms"].append(platform_name)
+#
+#     unique_profiles = list(unique_map.values())
+#
+#     # compute match scores and filter by experience range optionally
+#     scored = []
+#     for p in unique_profiles:
+#         scored_profile = compute_match_score(p, role, location, skill_list, company_variants, min_exp, max_exp)
+#         # keep even if location not found but score will be lower - UI can filter by score threshold if needed
+#         scored.append(scored_profile)
+#
+#     # sort by score desc, then by experience desc (if present)
+#     def sort_key(x):
+#         return (x.get("_match_score", 0), x.get("experience_years") or 0)
+#     scored_sorted = sorted(scored, key=sort_key, reverse=True)
+#
+#     # Optional: if user insisted on location-only strict results, we could filter matched location True (but keep flexible by default)
+#
+#     # PAGINATION on scored_sorted
+#     total_results = len(scored_sorted)
+#     # total_pages = (total_results + limit - 1) // limit if limit > 0 else 1
+#     # # clamp page
+#     # page = max(1, min(page, total_pages or 1))
+#     # start = (page - 1) * limit
+#     # end = start + limit
+#     # paginated = scored_sorted[start:end]
+#     paginated = scored_sorted
+#
+#     # Prepare friendly response (strip internal keys but keep score info)
+#     profiles_out = []
+#     for p in paginated:
+#         profiles_out.append({
+#             "title": p.get("title"),
+#             "profile_url": p.get("profile_url"),
+#             "summary": p.get("summary"),
+#             "platforms": p.get("platforms", []),
+#             "experience_years": p.get("experience_years"),
+#             "match_score": p.get("_match_score", 0),
+#             "matched_fields": p.get("_matched_fields", {})
+#         })
+#
+#     return {
+#         "status": "success",
+#         "role": role,
+#         "location": location,
+#         "skills": skills,
+#         "company": company,
+#         "exp_range": f"{min_exp} - {max_exp}",
+#         # "total_before_filter": len(all_results),
+#         "total_unique_profiles": total_results,
+#         # pagination metadata
+#         # "page": page,
+#         # "limit": limit,
+#         # "total_pages": total_pages,
+#         "profiles": profiles_out
+#     }
+
 def xray_search(req: dict):
     role = (req.get("role") or "").strip()
     location = (req.get("location") or "").strip()
@@ -313,8 +438,6 @@ def xray_search(req: dict):
     min_exp = int(req.get("min_exp", 0))
     max_exp = int(req.get("max_exp", 40))
     pages = int(req.get("pages", 2))
-    # page = int(req.get("page", 1))
-    # limit = int(req.get("limit", 20))
 
     if not role or not location:
         raise HTTPException(status_code=400, detail="role & location are required")
@@ -324,37 +447,41 @@ def xray_search(req: dict):
     skill_query = build_skill_query(skills)
     company_query = build_company_query(company) if company else ""
 
-    # For company match checks, create simple variants (unquoted)
-    company_variants = []
-    if company:
-        key = company.strip().lower()
-        if key in COMPANY_MAPPING:
-            company_variants = COMPANY_MAPPING[key]
-        else:
-            company_variants = [company.strip()]
+    # Only ONE final unified query (no variations)
+    def build_single_query(pattern):
+        q = (
+            f'{pattern} "{role}" '
+            f'{build_location_query(location)} '
+            f'{skill_query} '
+            f'{company_query} '
+            f'-jobs -hiring -recruiter'
+        )
+        return " ".join(q.split())
 
-    # Run queries across platforms with multiple variations (parallel)
+    # -----------------------------------------------------
+    # 🔥 SINGLE QUERY PER PLATFORM (no multi-variation calls)
+    # -----------------------------------------------------
     all_results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(PLATFORMS) * 3)) as executor:
-        future_to_query = {}
-        for platform, pattern in PLATFORMS.items():
-            q_variations = build_query_variations(pattern, role, location, skill_query, company_query)
-            # submit each variation
-            for q in q_variations:
-                future = executor.submit(fetch_serper_results, q, pages)
-                future_to_query[future] = q
 
-        # gather results
-        for future in concurrent.futures.as_completed(future_to_query):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(PLATFORMS)) as executor:
+        futures = []
+        for platform, pattern in PLATFORMS.items():
+            final_query = build_single_query(pattern)
+            futures.append(
+                executor.submit(fetch_serper_results, final_query, pages)
+            )
+
+        for future in concurrent.futures.as_completed(futures):
             try:
                 res = future.result()
                 if res:
                     all_results.extend(res)
             except Exception as e:
-                # ignore single query failures
-                print("⚠️ query/fetch error:", e)
+                print("⚠️ query fetch error:", e)
 
-    # deduplicate by profile_url
+    # ------------------------------
+    # REMOVE DUPLICATES BY PROFILE URL
+    # ------------------------------
     unique_map = {}
     for item in all_results:
         url = item.get("profile_url")
@@ -371,39 +498,35 @@ def xray_search(req: dict):
                 "platforms": [platform_name]
             }
         else:
-            # aggregate platforms or snippets if necessary
             if platform_name not in unique_map[url]["platforms"]:
                 unique_map[url]["platforms"].append(platform_name)
 
     unique_profiles = list(unique_map.values())
 
-    # compute match scores and filter by experience range optionally
+    # ---------------------------------
+    # SCORE & EXPERIENCE FILTER
+    # ---------------------------------
+    company_variants = []
+    if company:
+        key = company.strip().lower()
+        company_variants = COMPANY_MAPPING.get(key, [company.strip()])
+
     scored = []
     for p in unique_profiles:
-        scored_profile = compute_match_score(p, role, location, skill_list, company_variants, min_exp, max_exp)
-        # keep even if location not found but score will be lower - UI can filter by score threshold if needed
+        scored_profile = compute_match_score(
+            p, role, location, skill_list, company_variants, min_exp, max_exp
+        )
         scored.append(scored_profile)
 
-    # sort by score desc, then by experience desc (if present)
-    def sort_key(x):
-        return (x.get("_match_score", 0), x.get("experience_years") or 0)
-    scored_sorted = sorted(scored, key=sort_key, reverse=True)
+    scored_sorted = sorted(
+        scored,
+        key=lambda x: (x.get("_match_score", 0), x.get("experience_years") or 0),
+        reverse=True
+    )
 
-    # Optional: if user insisted on location-only strict results, we could filter matched location True (but keep flexible by default)
-
-    # PAGINATION on scored_sorted
-    total_results = len(scored_sorted)
-    # total_pages = (total_results + limit - 1) // limit if limit > 0 else 1
-    # # clamp page
-    # page = max(1, min(page, total_pages or 1))
-    # start = (page - 1) * limit
-    # end = start + limit
-    # paginated = scored_sorted[start:end]
-    paginated = scored_sorted
-
-    # Prepare friendly response (strip internal keys but keep score info)
+    # Final output formatting
     profiles_out = []
-    for p in paginated:
+    for p in scored_sorted:
         profiles_out.append({
             "title": p.get("title"),
             "profile_url": p.get("profile_url"),
@@ -421,11 +544,6 @@ def xray_search(req: dict):
         "skills": skills,
         "company": company,
         "exp_range": f"{min_exp} - {max_exp}",
-        # "total_before_filter": len(all_results),
-        "total_unique_profiles": total_results,
-        # pagination metadata
-        # "page": page,
-        # "limit": limit,
-        # "total_pages": total_pages,
+        "total_unique_profiles": len(profiles_out),
         "profiles": profiles_out
     }
