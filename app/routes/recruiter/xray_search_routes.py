@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Form, HTTPException, Request, Depends, Body
-from app.controllers.xray_search import xray_search
+from app.controllers.recruiter.xray_search import xray_search
 from app.models.xray_search import XRaySearchRequest
 from sqlalchemy.orm import Session
 from app.config.database import SessionLocal, get_db
