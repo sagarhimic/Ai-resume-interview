@@ -16,6 +16,7 @@ from .routes import (
 )
 from app.routes.recruiter.auth_routes import router as recruiter_auth_router
 from app.routes.recruiter.xray_search_routes import router as profile_search_router
+from app.routes.recruiter.extract_routes import router as profile_resume_router
 
 app = FastAPI(title="AI Interview Analysis API")
 
@@ -25,7 +26,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:4200",
         "http://127.0.0.1:4200",
-        "http://13.127.145.13:8001"
+        "https://13.127.145.13",
+        "*"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -49,7 +51,16 @@ def custom_openapi():
     }
 
     # 🔐 Only protect specific routes like /chat-store/
-    secure_paths = ["/parse-resume/", "/submit-answer/", "/generate-questions/", "/upload-full-video/", "/upload-question-audio/","/get-candidate-answers/","/xray_search/","/recruiter/{id}"]
+    secure_paths = [
+                    "/parse-resume/",
+                    "/submit-answer/",
+                    "/generate-questions/",
+                    "/upload-full-video/",
+                    "/upload-question-audio/",
+                    "/get-candidate-answers/",
+                    "/xray_search/",
+                    "/recruiter/{id}",
+                    "/recruiter/upload_candidate/"]
 
     for path in openapi_schema["paths"]:
         if path in secure_paths:
@@ -77,3 +88,4 @@ app.include_router(candidate_que_ans_routes.router)
 app.include_router(generate_jd_routes.router)
 app.include_router(recruiter_auth_router)
 app.include_router(profile_search_router)
+app.include_router(profile_resume_router)

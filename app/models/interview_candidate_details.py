@@ -8,7 +8,7 @@ class InterviewCandidateDetails(Base):
     meeting_id = Column(String(50), nullable=False)
     password = Column(String(125), nullable=False)
     submission_id = Column(Integer, nullable=True)
-    profile_id = Column(String(45), nullable=True)
+    profile_id = Column(String(125), nullable=True)
     profile_name = Column(String(250), nullable=True)
     profile_email = Column(String(45), nullable=True)
     cell_phone = Column(String(45), nullable=True)
@@ -29,7 +29,7 @@ class InterviewCandidateDetails(Base):
 
 class CandidatePassword(Base):
     __tablename__ = "candidate_password"
-    
+
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     candidate_id = Column(Integer, nullable=True)
     password = Column(String(45), nullable=True)
