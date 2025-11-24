@@ -242,8 +242,8 @@ def parse_resume(profile_name: str = Form(...),
             interview_location=clean_utf8(location),
             interview_duration=str(interview_duration),
             recruiter_id=recruiter_id,
-            created_date=date.today(),
-            modify_date=date.today(),
+            created_date=datetime.datetime.utcnow(),
+            modify_date=datetime.datetime.utcnow(),
             login_status=0
         )
 

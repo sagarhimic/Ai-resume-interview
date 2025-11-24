@@ -1,4 +1,5 @@
 import random
+from datetime import datetime
 
 def generate_random_meeting_id():
     numbers = "23456789"
@@ -27,3 +28,10 @@ def clean_utf8(text):
     if not text:
         return ""
     return text.encode("utf-8", errors="ignore").decode("utf-8")
+
+def format_interview_date(value):
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        dt = datetime.fromisoformat(str(value))
+    return dt.strftime("%d %b %Y %I:%M %p")

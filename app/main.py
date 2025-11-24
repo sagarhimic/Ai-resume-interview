@@ -60,7 +60,8 @@ def custom_openapi():
                     "/get-candidate-answers/",
                     "/xray_search/",
                     "/recruiter/{id}",
-                    "/recruiter/upload_candidate/"]
+                    "/recruiter/upload_candidate/",
+                    "/recruiter/interview_schedules/"]
 
     for path in openapi_schema["paths"]:
         if path in secure_paths:
