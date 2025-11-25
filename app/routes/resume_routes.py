@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Form, UploadFile, File, HTTPException, Request, Depends
 from app.controllers.resume_parser import parse_resume
 
-router = APIRouter()
+router = APIRouter(tags=["Candidate Interview"])
 
 # File Upload
 @router.post("/parse-resume/")

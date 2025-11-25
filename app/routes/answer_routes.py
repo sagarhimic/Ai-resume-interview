@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.config.auth import get_current_user
 from app.config.database import get_db
 
-router = APIRouter()
+router = APIRouter(tags=["Candidate Interview"])
 
 @router.post("/submit-answer/")
 def submit_candidate_answers(candidate_id: int = Form(...),

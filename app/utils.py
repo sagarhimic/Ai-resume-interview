@@ -35,3 +35,13 @@ def format_interview_date(value):
     else:
         dt = datetime.fromisoformat(str(value))
     return dt.strftime("%d %b %Y %I:%M %p")
+
+def interview_status_name(value):
+    status_map = {
+        0: "Scheduled/Not attempted",
+        1: "Left Interview",
+        2: "Session Timed Out",
+        3: "Proxy/Violation Detected",
+        4: "Completed"
+    }
+    return status_map.get(value, "Unknown Status")

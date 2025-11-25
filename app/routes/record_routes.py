@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 from app.controllers.records import upload_full_video, upload_question_audio
 
-router = APIRouter()
+router = APIRouter(tags=["Candidate Interview"])
 
 @router.post("/upload-question-audio/")
 async def upload_question_audio_rec(candidate_id: str = Form(...),
