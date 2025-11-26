@@ -83,8 +83,8 @@ async def upload_candidate(
         interview_duration=str(interview_duration),
         recruiter_id=recruiter_id,
         login_status="0",
-        created_date=datetime.datetime.utcnow(),
-        modify_date=datetime.datetime.utcnow()
+        created_date=datetime.utcnow(),
+        modify_date=datetime.utcnow()
     )
 
     db.add(row)

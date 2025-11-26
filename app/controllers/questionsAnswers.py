@@ -21,8 +21,14 @@ def get_candidate_answers(candidate_id: int, meeting_id: str, current_user: Inte
         .all()
     )
 
+    # ❌ No 404 error — return empty result instead
     if not candidate_answers:
-        raise HTTPException(status_code=404, detail="No answers found for this candidate")
+        return {
+            "candidate_id": candidate_id,
+            "total_answers": 0,
+            "avg_accuracy_score": 0.0,
+            "answers": []
+        }
 
     result = []
     total_score = 0
