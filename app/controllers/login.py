@@ -45,7 +45,14 @@ def userLogin(
 
 
     # ✅ Create JWT token
-    access_token = create_access_token({"sub": user.meeting_id})
+    # access_token = create_access_token({"sub": user.meeting_id})
+
+    access_token = create_access_token({
+        "candidate_id": user.id,
+        "meeting_id": user.meeting_id,
+        "profile_name": user.profile_name,
+        "profile_email": user.profile_email
+    })
 
     return {
         "status": "success",
