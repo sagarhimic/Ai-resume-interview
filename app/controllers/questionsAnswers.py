@@ -25,6 +25,8 @@ def get_candidate_answers(candidate_id: int, meeting_id: str, current_user: Inte
         raise HTTPException(status_code=404, detail="No answers found for this candidate")
 
     result = []
+    total_score = 0
+    scored_count = 0   # to avoid None values affecting average
 
     # Loop through answers and attach question text
     for ans in candidate_answers:
@@ -34,13 +36,22 @@ def get_candidate_answers(candidate_id: int, meeting_id: str, current_user: Inte
         result.append({
             # "question_id": ans.question_id,
             "question_text": question.question_text if question else "Question not found",
-            "answer_text": ans.answer_text
-            # "accuracy_score": ans.accuracy_score,
+            "answer_text": ans.answer_text,
+            "accuracy_score": ans.accuracy_score
             # "created_at": ans.created_at.isoformat()
         })
+
+        # Calculate average (ignore None values)
+        if ans.accuracy_score is not None:
+            total_score += float(ans.accuracy_score)
+            scored_count += 1
+
+    # Prevent division by zero
+    avg_accuracy = round(total_score / scored_count, 2) if scored_count > 0 else 0.0
 
     return {
         "candidate_id": candidate_id,
         "total_answers": len(result),
+        "avg_accuracy_score": avg_accuracy,
         "answers": result
     }

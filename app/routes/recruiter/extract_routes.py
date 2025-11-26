@@ -137,6 +137,7 @@ def get_interview_schedule_info(recruiter_id: int, db: Session = Depends(get_db)
             "profile_exp": re.sub(r'\s+', ' ', candidate.profile_exp).strip() if candidate.profile_exp else None,
             "required_skills": candidate.required_skills,
             "interview_date": format_interview_date(candidate.interview_date),
+            "interview_duration": candidate.interview_duration,
             "interview_location": candidate.interview_location,
             "login_status": candidate.login_status,
             "status_name": interview_status_name(int(candidate.login_status)),
