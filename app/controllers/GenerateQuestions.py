@@ -15,7 +15,7 @@ import os
 import requests
 
 # ---------------- Gemini AI Config ----------------
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyCTwt-PO38KpxWp2CQLUhJijmMolDMziwM")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBk8t8MOlp4O9T8St5BRkoPlFAXKZusJts")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 
@@ -41,8 +41,13 @@ def generate_questions(
     current_user: InterviewCandidateDetails = Depends(get_current_user),
     db: Session = Depends(get_db)):
 
+    candidate_name = current_user.get("profile_name") if isinstance(current_user, dict) else "the candidate"
+
+
     prompt = f"""
     You are an experienced and friendly technical interviewer conducting a real human-like interview.
+
+    Candidate Name: {candidate_name}
 
     Interview Context:
     - Job Title: {job_title}
@@ -51,6 +56,18 @@ def generate_questions(
     - Candidate Experience: {experience} years
     - Required Skills: {required_skills}
     - Candidate Skills: {candidate_skills}
+
+    Your Behavior:
+    - Start with a warm greeting and a short self-introduction.
+    - Then ask the candidate how they are feeling today.
+    - If the candidate later says something like:
+        “I’m good, how about you?”
+        “I am fine.”
+        “Good morning.”
+        “I’m doing well.”
+      You must reply naturally using their name.
+      Example:
+      “I’m doing great, {candidate_name}! Thanks for asking. Alright, let’s continue.”
 
     Interview Goal:
     Conduct a conversational-style interview where you start with a self-introduction
@@ -64,17 +81,24 @@ def generate_questions(
     - Ask one question per line (no numbering, no explanations).
     - Avoid robotic phrasing or lists — every question should sound human and spontaneous.
     - Prefer open-ended questions (e.g., “Can you tell me about…” rather than “What is…”).
-    - Then move to:
-        1. **Personality / Communication questions** (e.g., confidence, motivation, strengths)
-        2. **Behavioral / HR questions** (e.g., team challenges, problem-solving, adaptability)
-        3. **Situational / Decision-making questions**
-        4. **Technical / OOP / Database / Framework questions** based on skills listed
-        5. **Finish with one wrap-up question (e.g., “Do you have any questions for me?”)
+    - Order:
+        1. Warm greeting + human conversation starter
+        2. Ask for Self-Introduction
+        3. Personality / Communication questions** (e.g., confidence, motivation, strengths)
+        4. Behavioral questions** (e.g., team challenges, problem-solving, adaptability)
+        5. Situational / Decision-making questions
+        6. Technical questions (based on candidate’s skills)
+        7. Final wrap-up question (“Do you have any questions for me?”)
     - Make technical questions slightly challenging for the candidate's experience level.
     - Output only one question per line (no numbering or explanations).
 
+    Rules:
+    - DO NOT write explanations.
+    - DO NOT write lists or numbering.
+    - Questions must feel spontaneous and human.
+
     Example format:
-    Hi, I’m your interviewer for today. How are you feeling?
+    Hi {candidate_name}, I’m your interviewer for today. How are you feeling?
     Could you please introduce yourself?
     Can you share a project that you’re most proud of?
     Describe a time you solved a complex issue under pressure.

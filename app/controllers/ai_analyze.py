@@ -187,16 +187,39 @@ async def analyze_frame(
         last_face_encoding = current_encoding
 
         # 🧠 Improved Idle Detection (combines lip + expression + stability)
-        if not lip_sync:
-            no_lip_counter += 1
-            # Check inactivity across both lips and expressions
-            inactive_time = min(now - last_lip_time, now - last_expression_time)
+        # if not lip_sync:
+        #     no_lip_counter += 1
+        #     # Check inactivity across both lips and expressions
+        #     inactive_time = min(now - last_lip_time, now - last_expression_time)
+        #
+        #     if inactive_time >= IDLE_THRESHOLD:
+        #         idle_reason = f"No visible speech or facial change for {IDLE_THRESHOLD} seconds"
+        #         log_event(db, candidate_id, meeting_id, "idle_detected", idle_reason, "warning")
+        #         last_lip_time = now
+        #         last_expression_time = now
+        #         return {
+        #             "candidate_id": candidate_id,
+        #             "status": "idle_for_submission",
+        #             "reason": idle_reason,
+        #             "expression": expression,
+        #             "alert": False,
+        #             "face_boxes": face_boxes
+        #         }
+        # else:
+        #     no_lip_counter = 0
+        #     last_lip_time = now
+        #     last_expression_time = now  # reset both if user moves/talks
 
-            if inactive_time >= IDLE_THRESHOLD:
-                idle_reason = f"No visible speech or facial change for {IDLE_THRESHOLD} seconds"
+            # ========== IDLE DETECTION (ONLY LIP MOVEMENT) ==========
+        if not lip_sync:
+            inactive_time = now - last_lip_time
+
+            if inactive_time >= IDLE_THRESHOLD:  # e.g., 25 seconds
+                idle_reason = f"No lip movement for {IDLE_THRESHOLD} seconds"
                 log_event(db, candidate_id, meeting_id, "idle_detected", idle_reason, "warning")
-                last_lip_time = now
-                last_expression_time = now
+
+                last_lip_time = now  # reset after marking idle
+
                 return {
                     "candidate_id": candidate_id,
                     "status": "idle_for_submission",
@@ -206,10 +229,7 @@ async def analyze_frame(
                     "face_boxes": face_boxes
                 }
         else:
-            no_lip_counter = 0
-            last_lip_time = now
-            last_expression_time = now  # reset both if user moves/talks
-
+            last_lip_time = now  # reset when speaking
 
         # ✅ Return active response
         return {
