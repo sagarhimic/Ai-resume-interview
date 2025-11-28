@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from datetime import datetime, date
 import io
+import os
 import re
 from app.config.database import get_db
 from app.config.recruiter_auth import get_current_user
@@ -43,6 +44,9 @@ async def upload_candidate(
     file_bytes = await file.read()
     file_stream = io.BytesIO(file_bytes)
 
+    UPLOAD_DIR = "uploads/resumes"
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
     # Extract resume text
     try:
         resume_text = extract_resume_text(file_stream, ext)
@@ -58,8 +62,13 @@ async def upload_candidate(
 
     # Generate Meeting ID & Password
     meeting_id = generate_random_meeting_id()
-    password = generate_random_password()
+    filename = f"{meeting_id}_{file.filename}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
 
+    with open(file_path, "wb") as f:
+        f.write(file_bytes)
+
+    password = generate_random_password()
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     hashed_password = pwd_context.hash(password)
 
@@ -77,6 +86,7 @@ async def upload_candidate(
         profile_skills=parsed_skills,
         profile_exp=parsed_exp,
         resume_text=resume_text,
+        resume_path=file_path,
         required_skills=required_skills,
         interview_date=datetime.strptime(interview_date, "%Y-%m-%d %H:%M:%S"),
         interview_location=location,
@@ -108,7 +118,8 @@ async def upload_candidate(
         "meeting_id": meeting_id,
         "password": password,
         "detected_skills": parsed_skills,
-        "detected_experience": parsed_exp
+        "detected_experience": parsed_exp,
+        "resume_path": file_path
     }
 
 @router.post("/recruiter/interview_schedules/")

@@ -24,6 +24,7 @@ class InterviewCandidateDetails(Base):
     recruiter_id = Column(Integer, nullable=False)
     created_date = Column(Date, nullable=False)
     modify_date = Column(Date, nullable=False)
+    resume_path = Column(Text, nullable=True)
     login_status = Column(Integer, nullable=False, default=0)
 
 

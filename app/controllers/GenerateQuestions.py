@@ -15,7 +15,7 @@ import os
 import requests
 
 # ---------------- Gemini AI Config ----------------
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyCwMmdG7-3fd_1_UiOp9ZmL5OjGCIx2R04")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "A54665AIzaSyCwMmdG7-3fd_1_UiOp9ZmL5OjGCIx2R04")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 
