@@ -1,5 +1,8 @@
 import random
 from datetime import datetime
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+from app.models.Candidate_Answer import CandidateAnswer
 
 def generate_random_meeting_id():
     numbers = "23456789"
@@ -45,3 +48,14 @@ def interview_status_name(value):
         4: "Completed"
     }
     return status_map.get(value, "Unknown Status")
+
+def interview_avg_score(db: Session, meeting_id: str, candidate_id: int):
+
+    result = (
+        db.query(func.avg(CandidateAnswer.accuracy_score))
+          .filter(CandidateAnswer.meeting_id == meeting_id)
+          .filter(CandidateAnswer.candidate_id == candidate_id)
+          .scalar()
+    )
+
+    return round(result, 2) if result is not None else 0.0

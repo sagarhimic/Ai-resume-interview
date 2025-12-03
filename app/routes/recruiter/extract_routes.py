@@ -10,7 +10,7 @@ from app.config.recruiter_auth import get_current_user
 from app.models.interview_candidate_details import InterviewCandidateDetails, CandidatePassword
 from app.models.user import User
 from app.services.resume_extracter import extract_resume_text, extract_skills, extract_experience
-from app.utils import generate_random_meeting_id, generate_random_password, format_interview_date, interview_status_name
+from app.utils import generate_random_meeting_id, generate_random_password, format_interview_date, interview_status_name, interview_avg_score
 from passlib.context import CryptContext
 
 router = APIRouter(tags=["Recruiter Authentication"])
@@ -150,6 +150,7 @@ def get_interview_schedule_info(recruiter_id: int, db: Session = Depends(get_db)
             "interview_date": format_interview_date(candidate.interview_date),
             "interview_duration": candidate.interview_duration,
             "interview_location": candidate.interview_location,
+            "ai_score": interview_avg_score(db, candidate.meeting_id, candidate.id),
             "login_status": candidate.login_status,
             "status_name": interview_status_name(int(candidate.login_status)),
             "job_description": candidate.job_description
